@@ -106,6 +106,7 @@ class FCC:
         return H
 
     def get_H_local(self, i, j, k):
+        # NOTE: this is probably very bad implementation
         H = 0
         dif = [-1, 0, 1]
         for di in dif:
