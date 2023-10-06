@@ -1,5 +1,5 @@
 # SIMMER
-This <ins>s</ins>tatistical phys<ins>i</ins>cs <ins>sim</ins>ulator using <ins>M</ins>ont<ins>e</ins>-Ca<ins>r</ins>lo algorithm is capable of simulating multiple statistical physics models.
+This statistical physics <ins>sim</ins>ulator using <ins>M</ins>ont<ins>e</ins>-Ca<ins>r</ins>lo algorithm is capable of simulating multiple statistical physics models.
 
 
 The supported models include
