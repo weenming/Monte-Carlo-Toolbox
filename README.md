@@ -1,5 +1,5 @@
 # SIMMER
-This *s*tatistical phys**i**cs **sim**ulator using **M**ont**e**-Ca**r**lo algorithm is capable of simulating multiple statistical physics models.
+This *s*tatistical phys<ins>i<\ins>cs **sim**ulator using **M**ont**e**-Ca**r**lo algorithm is capable of simulating multiple statistical physics models.
 
 
 The supported models include
