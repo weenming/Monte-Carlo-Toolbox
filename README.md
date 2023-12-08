@@ -6,6 +6,6 @@ The supported models include
 - 1-D Ising model
 - Classical Heisenberg model
 
-![](./fig_save/Heisenberg.png)
+![](./fig_demo/Heisenberg.png)
 
-![](./fig_save/1D_Ising_model_correlation_n_1e5_iter_1e6.png)
+![](./fig_demo/1D_Ising_model_correlation_n_1e5_iter_1e6.png)
