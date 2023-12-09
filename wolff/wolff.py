@@ -1,7 +1,9 @@
 from logging import Logger
 import numpy as np
 
-def wolff_algorithm(lattice, temperature, num_steps, logger=None):
+from wolff.xy_model import XYModel2DWolff
+
+def wolff_algorithm(XYModel: XYModel2DWolff, temperature, num_steps, logger=None):
     # Perform Wolff algorithm for num_steps
     if logger is None:
         logger = Logger(
