@@ -2,7 +2,6 @@ import numpy as np
 import torch
 from abc import ABC, abstractmethod
 
-from wolff.utils import set_seed
 
 
 class BaseXYModel(ABC):
@@ -17,12 +16,10 @@ class BaseXYModel(ABC):
 
 
 class XYModel2D:
-    def __init__(self, grid_size, seed=0, theta_arr=None, device='cpu'):
+    def __init__(self, grid_size, theta_arr=None, device='cpu'):
         '''
         Initialize a 2D XY model
         '''
-        # set seed
-        set_seed(seed)
         if theta_arr is None:
             self.state = 2 * torch.pi * torch.rand((grid_size, grid_size)).to(device)
         else:
@@ -49,14 +46,12 @@ class XYModel2DWolff:
         1: the edge BELOW the current grid
         2: the edge to the RIGHT of the current grid
     '''
-    def __init__(self, grid_size, seed=0, theta_arr=None, device='cpu'):
+    def __init__(self, grid_size, theta_arr=None, device='cpu'):
         '''
         Initialize a 2D XY model
         '''
-        # set seed
-        set_seed(seed)
         if theta_arr is None:
-            self.state = 2 * torch.pi * torch.rand((3, grid_size, grid_size)).to(device) # see class doc
+            self.state = 2 * torch.pi * torch.rand((3, grid_size, grid_size)).to(device).detach() # see class doc
         else:
             # check validity of theta_arr
             assert theta_arr.shape == (3, grid_size, grid_size) # see class doc
@@ -116,8 +111,8 @@ class XYModel2DWolff:
         self.get_bond()[0] = torch.bernoulli(self._tmp_bond_sampling[0])
 
         # edge to the right
-        self._tmp_bond_sampling[0, :, :-1] = p(self.get_spin()[:, 1:] - self.get_spin()[:, :-1])
-        self._tmp_bond_sampling[0, :, -1] = p(self.get_spin()[:, -1] - self.get_spin()[:, 0]) # periodic BC
+        self._tmp_bond_sampling[0, :, :-1] = p(self.get_spin()[:, 1:], self.get_spin()[:, :-1])
+        self._tmp_bond_sampling[0, :, -1] = p(self.get_spin()[:, -1], self.get_spin()[:, 0]) # periodic BC
         self.get_bond()[1] = torch.bernoulli(self._tmp_bond_sampling[1])
         
     def flip(self, nW, flip_one_cluster=True):
@@ -135,40 +130,71 @@ class XYModel2DWolff:
         else:
             raise NotImplementedError
         
-    def flip_one_cluster(self, nW):
+    def flip_one_cluster(self, nW, debug=False):
         # randomly sample a starting point (a cluster)
-        i, j = torch.randint(self.state)
+        i, j = torch.randint(self.state.shape[-1]), torch.randint(self.state.shape[-1])
         # reset the used flag matrix before recursion
         self._tmp_in_cluster = 0
         self.bond_dfs(i, j)
+        # flip theta
+        self.state[0] = (
+            self.state[0] * (1 - self._tmp_in_cluster) + # not flip spins out of the cluster
+            (2 * nW - self.state[0]) * self._tmp_in_cluster # flip the cluster
+        )
+
+        if debug:
+            assert self._tmp_bfs_stack == []
+            return self._tmp_in_cluster
+        # reset, although not necessary for now
+        self._tmp_in_cluster = 0
+        self._tmp_bfs_stack = [] # well this should be empty
+
 
     def bond_dfs(self, i, j):
         '''
         Depth first search given initial i and j. Use 
         '''
-        # above (i, j)
-        if not self._tmp_in_cluster[i - 1, j] and self.get_bond()[0, i - 1, j]:
-            self._tmp_in_cluster[i - 1, j] = True
-            self._tmp_bfs_stack.append((i, j))
-            return self.bond_dfs(i - 1, j)
-        # below (i, j)
-        elif not self._tmp_in_cluster[i + 1, j] and self.get_bond()[0, i + 1, j]:
-            self._tmp_in_cluster[i + 1, j] = True
-            self._tmp_bfs_stack.append((i, j))
-            return self.bond_dfs(i + 1, j)
-        # left to (i, j)
-        elif not self._tmp_in_cluster[i, j - 1] and self.get_bond()[1, i, j - 1]:
-            self._tmp_in_cluster[i, j - 1] = True
-            self._tmp_bfs_stack.append((i, j))
-            return self.bond_dfs(i, j - 1)
-        # right to (i, j)
-        elif not self._tmp_in_cluster[i, j + 1] and self.get_bond()[1, i, j + 1]:
-            self._tmp_in_cluster[i, j + 1] = True
-            self._tmp_bfs_stack.append((i, j))
-            return self.bond_dfs(i, j + 1)
+        # try four different directions
+ 
+        for i_neighbor, j_neighbor in [(i - 1, j), (i + 1, j), (i, j - 1), (i, j + 1)]:
+            self._rec_neighbor(i_neighbor, j_neighbor)
+        
+        if len(self._tmp_bfs_stack) == 0: # end recursion
+            return
         else:
-            if len(self._tmp_bfs_stack) == 0: # end recursion
-                return
-            else:
-                return self.bond_dfs(*self._tmp_bfs_stack.pop())
-            
+            return self.bond_dfs(*self._tmp_bfs_stack.pop())
+       
+    def _rec_neighbor(self, i, j):
+        if not self._tmp_in_cluster[i, j] and self.get_bond()[0, i, j]:
+            self._tmp_in_cluster[i, j] = True
+            self._tmp_bfs_stack.append((i, j))
+            return self.bond_dfs(i, j)
+        
+    # def bad_bond_dfs(self, i, j):
+    #     # NOTE: this bad implementation is commented out
+    #     # above (i, j)
+    #     if not self._tmp_in_cluster[i - 1, j] and self.get_bond()[0, i - 1, j]:
+    #         self._tmp_in_cluster[i - 1, j] = True
+    #         self._tmp_bfs_stack.append((i, j))
+    #         return self.bond_dfs(i - 1, j)
+    #     # below (i, j)
+    #     elif not self._tmp_in_cluster[i + 1, j] and self.get_bond()[0, i + 1, j]:
+    #         self._tmp_in_cluster[i + 1, j] = True
+    #         self._tmp_bfs_stack.append((i, j))
+    #         return self.bond_dfs(i + 1, j)
+    #     # left to (i, j)
+    #     elif not self._tmp_in_cluster[i, j - 1] and self.get_bond()[1, i, j - 1]:
+    #         self._tmp_in_cluster[i, j - 1] = True
+    #         self._tmp_bfs_stack.append((i, j))
+    #         return self.bond_dfs(i, j - 1)
+    #     # right to (i, j)
+    #     elif not self._tmp_in_cluster[i, j + 1] and self.get_bond()[1, i, j + 1]:
+    #         self._tmp_in_cluster[i, j + 1] = True
+    #         self._tmp_bfs_stack.append((i, j))
+    #         return self.bond_dfs(i, j + 1)
+    #
+    #     if len(self._tmp_bfs_stack) == 0: # end recursion
+    #         return
+    #     else:
+    #         return self.bond_dfs(*self._tmp_bfs_stack.pop())
+        
