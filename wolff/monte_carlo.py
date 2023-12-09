@@ -41,12 +41,12 @@ def wolff_algorithm(
 
         # randomly choose a Wolff plane        
         nW = 2 * torch.pi * torch.rand((1, )).item()
-        print(nW)
+        # print(nW)
         # update bond according to the Wolff plane
         xy_model.update_bond(nW=nW, beta=1 / temperature)
         
         # select one cluster according to the bond
-        xy_model.flip(nW=nW, flip_one_cluster=True)
+        xy_model.flip(nW=nW, flip_one_cluster=False)
 
         if step % stamp_interval == 0:
             logger.log(step + step_offset, xy_model.get_state().clone().cpu())

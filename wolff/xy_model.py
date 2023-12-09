@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from abc import ABC, abstractmethod
 
-
+get_randperm_1strow = lambda x: x[torch.randperm(x.size(0))[0]]
 
 class BaseXYModel(ABC):
     def __init__(self) -> None:
@@ -62,6 +62,7 @@ class XYModel2DWolff:
 
         # preallocate space for used matrices
         self._tmp_bond_sampling = torch.zeros_like(self.state[1:])
+        self._tmp_already_flipped = torch.zeros_like(self.state[0])
         self._tmp_in_cluster = torch.zeros_like(self.state[0])
         self._tmp_bfs_stack = [] # pretend this is a stack
     
@@ -132,7 +133,7 @@ class XYModel2DWolff:
         if flip_one_cluster:
             self.flip_one_cluster(nW)
         else:
-            raise NotImplementedError
+            self.flip_all_clusters(nW)
         
     def flip_one_cluster(self, nW, debug=False):
         # randomly sample a starting point (a cluster)
@@ -144,7 +145,7 @@ class XYModel2DWolff:
         # flip theta
         self.state[0] = (
             self.state[0] * (1 - self._tmp_in_cluster) + # not flip spins out of the cluster
-            (2 * nW - self.state[0]) * self._tmp_in_cluster # flip the cluster
+            ((2 * nW - self.state[0] + torch.pi) % torch.pi) * self._tmp_in_cluster # flip the cluster
         )
 
         if debug:
@@ -152,8 +153,30 @@ class XYModel2DWolff:
             return self._tmp_in_cluster
         # reset, although not necessary for now
         self._tmp_in_cluster[...] = 0
-        self._tmp_bfs_stack = [] # well this should be empty
 
+    def flip_all_clusters(self, nW):
+        # reset the used flag matrix before recursion
+        self._tmp_already_flipped[...] = 0
+
+        while (self._tmp_already_flipped != 1).any():
+            # select only from unflipped clusters
+            i, j = get_randperm_1strow(torch.nonzero(self._tmp_already_flipped == 0))
+            
+            self._tmp_in_cluster[...] = 0
+            self._tmp_in_cluster[i, j] = 1
+            self.bond_dfs(i, j)
+            # flip theta in this cluster
+            if np.random.rand() > 0.5:
+                self.state[0] = (
+                    self.state[0] * (1 - self._tmp_in_cluster) + # not flip spins out of the cluster
+                    ((2 * nW - self.state[0] + torch.pi) % torch.pi) * self._tmp_in_cluster # flip the cluster
+                )
+            self._tmp_already_flipped[self._tmp_in_cluster.nonzero()[:, 0], self._tmp_in_cluster.nonzero()[:, 1]] = 1
+            # reset, although not necessary for now
+            self._tmp_in_cluster[...] = 0
+            assert self._tmp_bfs_stack == [] # well this must be empty
+        
+        
 
     def bond_dfs(self, i, j):
         '''
@@ -176,7 +199,7 @@ class XYModel2DWolff:
        
     def _rec_neighbor(self, i, j):
         if not self._tmp_in_cluster[i, j] and self.get_bond()[0, i, j]:
-            self._tmp_in_cluster[i, j] = True
+            self._tmp_in_cluster[i, j] = 1
             self._tmp_bfs_stack.append((i, j))
             return self.bond_dfs(i, j)
         
