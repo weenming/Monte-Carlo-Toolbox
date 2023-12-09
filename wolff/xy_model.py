@@ -51,13 +51,15 @@ class XYModel2DWolff:
         Initialize a 2D XY model
         '''
         if theta_arr is None:
-            self.state = 2 * torch.pi * torch.rand((3, grid_size, grid_size)).to(device).detach() # see class doc
+            self.state = 2 * torch.pi * torch.rand((3, grid_size, grid_size)).to(device).to(torch.float64).detach() # see class doc
         else:
             # check validity of theta_arr
             assert theta_arr.shape == (3, grid_size, grid_size) # see class doc
             assert theta_arr.max() <= 2 * torch.pi and theta_arr.min() >= 0
             self.state = theta_arr
         
+        self.grid_size = grid_size
+
         # preallocate space for used matrices
         self._tmp_bond_sampling = torch.zeros_like(self.state[1:])
         self._tmp_in_cluster = torch.zeros_like(self.state[0])
@@ -97,22 +99,24 @@ class XYModel2DWolff:
             assert nW is not None
             bond_probability_given_states = lambda s1, s2: (
                 (
-                    (torch.cos(s1 - nW) * torch.cos(s2 - nW)) > 0
+                    ((torch.cos(s1 - nW) * torch.cos(s2 - nW)) > 0).to(torch.float64)
                 ) * (
                     1 - torch.exp(-2 * beta * J * torch.cos(s1 - nW) * torch.cos(s2 - nW))
                 )
-            )
+            ).clamp(0, 1)
         # alias
         p = bond_probability_given_states
         
         # edge below the grid
         self._tmp_bond_sampling[0, :-1, :] = p(self.get_spin()[1:, :], self.get_spin()[:-1, :])
         self._tmp_bond_sampling[0, -1, :] = p(self.get_spin()[-1, :], self.get_spin()[0, :]) # periodic BC
+        if not (self._tmp_bond_sampling.min() >= 0) or not self._tmp_bond_sampling.max() <= 1:
+            print('badbad!')
         self.get_bond()[0] = torch.bernoulli(self._tmp_bond_sampling[0])
 
         # edge to the right
-        self._tmp_bond_sampling[0, :, :-1] = p(self.get_spin()[:, 1:], self.get_spin()[:, :-1])
-        self._tmp_bond_sampling[0, :, -1] = p(self.get_spin()[:, -1], self.get_spin()[:, 0]) # periodic BC
+        self._tmp_bond_sampling[1, :, :-1] = p(self.get_spin()[:, 1:], self.get_spin()[:, :-1])
+        self._tmp_bond_sampling[1, :, -1] = p(self.get_spin()[:, -1], self.get_spin()[:, 0]) # periodic BC
         self.get_bond()[1] = torch.bernoulli(self._tmp_bond_sampling[1])
         
     def flip(self, nW, flip_one_cluster=True):
@@ -132,10 +136,11 @@ class XYModel2DWolff:
         
     def flip_one_cluster(self, nW, debug=False):
         # randomly sample a starting point (a cluster)
-        i, j = torch.randint(self.state.shape[-1]), torch.randint(self.state.shape[-1])
+        i, j = torch.randint(0, self.grid_size, (2, ))
         # reset the used flag matrix before recursion
-        self._tmp_in_cluster = 0
+        self._tmp_in_cluster[...] = 0
         self.bond_dfs(i, j)
+        
         # flip theta
         self.state[0] = (
             self.state[0] * (1 - self._tmp_in_cluster) + # not flip spins out of the cluster
@@ -146,7 +151,7 @@ class XYModel2DWolff:
             assert self._tmp_bfs_stack == []
             return self._tmp_in_cluster
         # reset, although not necessary for now
-        self._tmp_in_cluster = 0
+        self._tmp_in_cluster[...] = 0
         self._tmp_bfs_stack = [] # well this should be empty
 
 
@@ -156,7 +161,12 @@ class XYModel2DWolff:
         '''
         # try four different directions
  
-        for i_neighbor, j_neighbor in [(i - 1, j), (i + 1, j), (i, j - 1), (i, j + 1)]:
+        for i_neighbor, j_neighbor in [
+            ((i - 1) % self.grid_size, j), 
+            ((i + 1) % self.grid_size, j), 
+            (i, (j - 1) % self.grid_size), 
+            (i, (j + 1) % self.grid_size), 
+        ]:
             self._rec_neighbor(i_neighbor, j_neighbor)
         
         if len(self._tmp_bfs_stack) == 0: # end recursion

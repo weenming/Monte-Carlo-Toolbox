@@ -8,7 +8,7 @@ def wolff_algorithm(
         xy_model: XYModel2DWolff, 
         temperature, 
         num_steps, 
-        stamp_interval = 100, 
+        stamp_interval = 1, 
         logger: Logger = None, 
 ):
     # Get lattice size
@@ -22,6 +22,7 @@ def wolff_algorithm(
             num_steps // stamp_interval, 
             {'temperature': temperature, 'num_steps': num_steps, 'grid_size': L, 'algorithm': 'wolff'}, 
         )
+        step_offset = 0
     else:
         logger = Logger(
             num_steps, 
@@ -39,8 +40,8 @@ def wolff_algorithm(
     for step in range(num_steps):
 
         # randomly choose a Wolff plane        
-        nW = 2 * torch.pi * torch.rand(1).item()
-
+        nW = 2 * torch.pi * torch.rand((1, )).item()
+        print(nW)
         # update bond according to the Wolff plane
         xy_model.update_bond(nW=nW, beta=1 / temperature)
         
@@ -49,5 +50,5 @@ def wolff_algorithm(
 
         if step % stamp_interval == 0:
             logger.log(step + step_offset, xy_model.get_state().clone().cpu())
-    return xy_model
+    return logger
 
