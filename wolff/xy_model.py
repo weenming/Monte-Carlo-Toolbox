@@ -169,7 +169,7 @@ class XYModel2DWolff:
             if np.random.rand() > 0.5:
                 self.state[0] = (
                     self.state[0] * (1 - self._tmp_in_cluster) + # not flip spins out of the cluster
-                    ((2 * nW - self.state[0] + torch.pi) % torch.pi) * self._tmp_in_cluster # flip the cluster
+                    ((2 * nW - self.state[0] + torch.pi) % (2 * torch.pi)) * self._tmp_in_cluster # flip the cluster
                 )
             self._tmp_already_flipped[self._tmp_in_cluster.nonzero()[:, 0], self._tmp_in_cluster.nonzero()[:, 1]] = 1
             # reset, although not necessary for now
@@ -184,21 +184,25 @@ class XYModel2DWolff:
         '''
         # try four different directions
  
-        for i_neighbor, j_neighbor in [
-            ((i - 1) % self.grid_size, j), 
-            ((i + 1) % self.grid_size, j), 
-            (i, (j - 1) % self.grid_size), 
-            (i, (j + 1) % self.grid_size), 
+        for i_neighbor, j_neighbor, hor_ver in [
+            ((i - 1) % self.grid_size, j, 0), 
+            ((i + 1) % self.grid_size, j, 0), 
+            (i, (j - 1) % self.grid_size, 1), 
+            (i, (j + 1) % self.grid_size, 1), 
         ]:
-            self._rec_neighbor(i_neighbor, j_neighbor)
+            self._rec_neighbor(i_neighbor, j_neighbor, hor_ver)
         
         if len(self._tmp_bfs_stack) == 0: # end recursion
             return
         else:
             return self.bond_dfs(*self._tmp_bfs_stack.pop())
        
-    def _rec_neighbor(self, i, j):
-        if not self._tmp_in_cluster[i, j] and self.get_bond()[0, i, j]:
+    def _rec_neighbor(self, i, j, hor_ver):
+        '''
+        Arguments:
+            hor_ver: 0 if vertical bond, 1 if horizontal bond
+        '''
+        if not self._tmp_in_cluster[i, j] and self.get_bond()[hor_ver, i, j]:
             self._tmp_in_cluster[i, j] = 1
             self._tmp_bfs_stack.append((i, j))
             return self.bond_dfs(i, j)
