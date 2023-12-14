@@ -78,3 +78,4 @@ class Logger:
         else:
             return self.states[stamp_idx]
     
+    

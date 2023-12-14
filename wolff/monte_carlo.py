@@ -1,3 +1,4 @@
+import tqdm
 from logger import Logger
 import numpy as np
 import torch
@@ -37,7 +38,7 @@ def wolff_algorithm(
     cluster = np.zeros_like(xy_model.get_spin(), dtype=bool)
     visited = np.zeros_like(xy_model.get_spin(), dtype=bool)
     
-    for step in range(num_steps):
+    for step in tqdm.trange(num_steps):
 
         # randomly choose a Wolff plane        
         nW = 2 * torch.pi * torch.rand((1, )).item()
