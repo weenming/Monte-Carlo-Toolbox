@@ -143,11 +143,8 @@ class XYModel2DWolff:
         self.bond_dfs(i, j)
         
         # flip theta
-        self.state[0] = (
-            self.state[0] * (1 - self._tmp_in_cluster) + # not flip spins out of the cluster
-            ((2 * nW - self.state[0] + torch.pi) % torch.pi) * self._tmp_in_cluster # flip the cluster
-        )
-
+        self.state[0] = self._flip_func(self.state[0], self._tmp_in_cluster, nW)
+        
         if debug:
             assert self._tmp_bfs_stack == []
             return self._tmp_in_cluster
@@ -167,17 +164,19 @@ class XYModel2DWolff:
             self.bond_dfs(i, j)
             # flip theta in this cluster
             if np.random.rand() > 0.5:
-                self.state[0] = (
-                    self.state[0] * (1 - self._tmp_in_cluster) + # not flip spins out of the cluster
-                    ((2 * nW - self.state[0] + torch.pi) % (2 * torch.pi)) * self._tmp_in_cluster # flip the cluster
-                )
+                self.state[0] = self._flip_func(self.state[0], self._tmp_in_cluster, nW)
+                
             self._tmp_already_flipped[self._tmp_in_cluster.nonzero()[:, 0], self._tmp_in_cluster.nonzero()[:, 1]] = 1
             # reset, although not necessary for now
             self._tmp_in_cluster[...] = 0
             assert self._tmp_bfs_stack == [] # well this must be empty
         
-        
-
+    def _flip_func(self, state, in_cluster, nW):
+        return (
+            state * (1 - in_cluster) + # not flip spins out of the cluster
+            ((2 * nW - state + torch.pi) % (2 * torch.pi)) * in_cluster # flip the cluster
+        )
+    
     def bond_dfs(self, i, j):
         '''
         Depth first search given initial i and j. Use 
