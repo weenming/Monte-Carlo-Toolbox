@@ -41,7 +41,7 @@ def run_exp(L, step_num, T):
 if __name__ == '__main__':
     
     if not os.path.exists(os.path.dirname(__file__) + '/save/'):
-        os.path.mkdir(os.path.dirname(__file__) + '/save/')
+        os.makedirs(os.path.dirname(__file__) + '/save/')
 
     set_seed(0)
     step_num = 1000
