@@ -11,6 +11,7 @@ def wolff_algorithm(
         num_steps, 
         stamp_interval = 1, 
         logger: Logger = None, 
+        flip_all = True, 
 ):
     # Get lattice size
     L = xy_model.get_spin().size(0)
@@ -47,7 +48,7 @@ def wolff_algorithm(
         xy_model.update_bond(nW=nW, beta=1 / temperature)
         
         # select one cluster according to the bond
-        xy_model.flip(nW=nW, flip_one_cluster=False)
+        xy_model.flip(nW=nW, flip_one_cluster=not filp_all)
 
         if step % stamp_interval == 0:
             logger.log(step + step_offset, xy_model.get_state().clone().cpu())
