@@ -183,28 +183,31 @@ class XYModel2DWolff:
         '''
         # try four different directions
  
-        for i_neighbor, j_neighbor, hor_ver in [
-            ((i - 1) % self.grid_size, j, 0), 
-            ((i + 1) % self.grid_size, j, 0), 
-            (i, (j - 1) % self.grid_size, 1), 
-            (i, (j + 1) % self.grid_size, 1), 
+        for i_neighbor, j_neighbor in [
+            ((i - 1) % self.grid_size, j), 
+            ((i + 1) % self.grid_size, j), 
+            (i, (j - 1) % self.grid_size), 
+            (i, (j + 1) % self.grid_size), 
         ]:
-            self._rec_neighbor(i_neighbor, j_neighbor, hor_ver)
+            self._rec_neighbor(i, j, i_neighbor, j_neighbor)
         
         if len(self._tmp_bfs_stack) == 0: # end recursion
             return
         else:
             return self.bond_dfs(*self._tmp_bfs_stack.pop())
        
-    def _rec_neighbor(self, i, j, hor_ver):
+    def _rec_neighbor(self, i, j, i_n, j_n):
         '''
         Arguments:
-            hor_ver: 0 if vertical bond, 1 if horizontal bond
+            i, j: i and j of the current node
+            i_n, j_n: i and j of the neighbor node
         '''
-        if not self._tmp_in_cluster[i, j] and self.get_bond()[hor_ver, i, j]:
-            self._tmp_in_cluster[i, j] = 1
-            self._tmp_bfs_stack.append((i, j))
-            return self.bond_dfs(i, j)
+        hor_ver = 1 if i != i_n else 0 # 1 if vertical, 0 if horizontal
+        i_bond, j_bond = min(i, i_n), min(j, j_n) # the bond is always stored in the smaller index
+        if not self._tmp_in_cluster[i_n, j_n] and self.get_bond()[hor_ver, i_bond, j_bond]:
+            self._tmp_in_cluster[i_n, j_n] = 1
+            self._tmp_bfs_stack.append((i_n, j_n))
+            return self.bond_dfs(i_n, j_n)
         
     # def bad_bond_dfs(self, i, j):
     #     # NOTE: this bad implementation is commented out
