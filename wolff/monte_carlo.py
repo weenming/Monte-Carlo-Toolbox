@@ -35,10 +35,6 @@ def wolff_algorithm(
         step_offset = logger.steps[-1] + 1
 
     
-    # Initialize cluster and visited arrays
-    cluster = np.zeros_like(xy_model.get_spin(), dtype=bool)
-    visited = np.zeros_like(xy_model.get_spin(), dtype=bool)
-    
     for step in tqdm.trange(num_steps):
 
         # randomly choose a Wolff plane        
@@ -48,7 +44,7 @@ def wolff_algorithm(
         xy_model.update_bond(nW=nW, beta=1 / temperature)
         
         # select one cluster according to the bond
-        xy_model.flip(nW=nW, flip_one_cluster=not filp_all)
+        xy_model.flip(nW=nW, flip_one_cluster=not flip_all)
 
         if step % stamp_interval == 0:
             logger.log(step + step_offset, xy_model.get_state().clone().cpu())

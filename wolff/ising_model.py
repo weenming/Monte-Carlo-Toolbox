@@ -8,7 +8,7 @@ class Ising2DWolff(XYModel2DWolff):
         Initialize a 2D XY model
         '''
         if theta_arr is None:
-            self.state = 2 * torch.pi * torch.rand((3, grid_size, grid_size)).to(device).to(torch.float64).detach() # see class doc
+            self.state = -1 + 2 * torch.randint(0, 2, (3, grid_size, grid_size)).to(device).to(torch.float64).detach() # see class doc
         else:
             # check validity of theta_arr
             assert theta_arr.shape == (3, grid_size, grid_size) # see class doc
