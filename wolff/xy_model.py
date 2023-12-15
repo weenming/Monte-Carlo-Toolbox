@@ -202,8 +202,12 @@ class XYModel2DWolff:
             i, j: i and j of the current node
             i_n, j_n: i and j of the neighbor node
         '''
-        hor_ver = 1 if i != i_n else 0 # 1 if vertical, 0 if horizontal
-        i_bond, j_bond = min(i, i_n), min(j, j_n) # the bond is always stored in the smaller index
+        hor_ver = 0 if i != i_n else 1 # 0 if vertical, 1 if horizontal
+
+        i_bond = min((i + 1) % self.grid_size, (i_n + 1) % self.grid_size) - 1
+        j_bond = min((j + 1) % self.grid_size, (j_n + 1) % self.grid_size) - 1 # the bond is always stored in the smaller index
+        # i_bond, j_bond = min(i, i_n), min(j, j_n)
+
         if not self._tmp_in_cluster[i_n, j_n] and self.get_bond()[hor_ver, i_bond, j_bond]:
             self._tmp_in_cluster[i_n, j_n] = 1
             self._tmp_bfs_stack.append((i_n, j_n))
