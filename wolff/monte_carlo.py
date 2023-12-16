@@ -32,7 +32,7 @@ def wolff_algorithm(
             num_steps // stamp_interval, 
             logger = logger # initialize with the previous logger 
         )
-        step_offset = logger.steps[-1] + 1
+        step_offset = logger.states.shape[0] + 1
 
     
     for step in tqdm.trange(num_steps):
